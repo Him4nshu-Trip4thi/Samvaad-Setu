@@ -6,19 +6,22 @@ import crypto from "crypto";
 const login = async(req,res)=>{
     const {username, password} = req.body;
     if(!username || !password){
-        return res.status(httpStatus.BAD_REQUEST).json({message: "Please Provide..."})
+        return res.status(httpStatus.BAD_REQUEST).json({message: "Please Provide Credentials!"})
     }
     try{
         const user = await User.findOne({username});
         if(!user){
-            return res.status(httpStatus.NOT_FOUND).json({message: "User not found..."});
+            return res.status(httpStatus.NOT_FOUND).json({message: "Invalid Username!"});
         }
-        if(bcrypt.compare(password, user.password)){
+        let isPasswordCorrect = await bcrypt.compare(password, user.password);
+        if(isPasswordCorrect){
             let token = crypto.randomBytes(20).toString("hex");
             user.token = token;
             await user.save();
             return res.status(httpStatus.OK).json({token: token});
 
+        } else {
+            return res.status(httpStatus.UNAUTHORIZED).json({message: "Invalid Username or Password!"})
         }
     }
     catch (e){
