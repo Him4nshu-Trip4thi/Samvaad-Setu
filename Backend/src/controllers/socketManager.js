@@ -1,16 +1,14 @@
-import { connections } from "mongoose"
-import path from "node:path"
 import { Server } from "socket.io"
 
-let connection={}
-let messages={}
-let timeOnline={}
+let connections = {}
+let messages = {}
+let timeOnline = {}
 
-export const connectToSocket = (server)=>{
+export const connectToSocket = (server) => {
     const io = new Server(server, {
         cors: {
             origin: "*",
-            methods:["GET", "POST"],
+            methods: ["GET", "POST"],
             allowedHeaders: ["*"],
             credentials: true
         }
@@ -18,46 +16,48 @@ export const connectToSocket = (server)=>{
 
     io.on("connection", (socket) => {
 
-        socket.on("join-call", (path)=>{
-            if(connections[paths] === undefined){
+        console.log("SOMETHING CONNECTED");
+
+        socket.on("join-call", (path) => {
+            if (connections[path] === undefined) {
                 connections[path] = []
             }
-            connection[path].push(socket.id);
+            connections[path].push(socket.id);
             timeOnline[socket.id] = new Date();
 
-            
-            for(let i=0;i<connections[path].length;i++){
+
+            for (let i = 0; i < connections[path].length; i++) {
                 io.to(connections[path][i]).emit("user-joined", socket.id, connections[path])
             }
-            if(messages[path]!==undefined){
-                for(let i=0;i<messages[path].length;++i){
+            if (messages[path] !== undefined) {
+                for (let i = 0; i < messages[path].length; ++i) {
                     io.to(socket.id).emit("chat-message", messages[path][i]['data'],
                         messages[path][i]['sender'],
                         messages[path][i]['socket-id-sender'])
-                    }
                 }
-            })
+            }
+        })
 
-        socket.on("signal", (toId, messages)=>{
+        socket.on("signal", (toId, messages) => {
             io.to(toId).emit("signal", socket.id, messages);
         })
 
-        socket.on("chat-message", (data, sender)=>{
-            const[matchingRoom, found] = Object.entries(connections)
-            .reduce(([room, isFound], [roomKey, roomValue]) => {
-                if(!isFound && roomValue.includes(socket.id)){
-                    return [roomKey, true];
-                }
-                return [room, isFound];
-            }, ['', false]);
+        socket.on("chat-message", (data, sender) => {
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
 
-            if(found === true){
-                if(messages[matchingRoom] === undefined){
-                    messages[matchingRoom]=[]
+            if (found === true) {
+                if (messages[matchingRoom] === undefined) {
+                    messages[matchingRoom] = []
                 }
-                messages[matchingRoom].push({'sender': sender, "data": data, "socket-id-sender": socket.id})
-                console.log("message", KeyboardEvent, ":", sender,data)
-                connections[matchingRoom].forEach((elem)=>{
+                messages[matchingRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id })
+                console.log("message", KeyboardEvent, ":", sender, data)
+                connections[matchingRoom].forEach((elem) => {
                     io.to(elem).emit("chat-message", data, sender, socket.id)
                 })
             }
@@ -65,21 +65,21 @@ export const connectToSocket = (server)=>{
 
         });
 
-        socket.on("disconnect", ()=>{
-            var diffTime= Math.abs(timeOnline[socket.id] - new Date())
+        socket.on("disconnect", () => {
+            var diffTime = Math.abs(timeOnline[socket.id] - new Date())
             var key
-            for(const [k,v] of JSON.parse(JSON.stringify(Object.entries(connections)))){
-                for(let i=0;i<v.length;++i){
-                    if(v[i] == socket.id){
-                        key=k;
+            for (const [k, v] of JSON.parse(JSON.stringify(Object.entries(connections)))) {
+                for (let i = 0; i < v.length; ++i) {
+                    if (v[i] == socket.id) {
+                        key = k;
 
-                        for(let i=0;i<connections[key].length;++i){
-                            io.to(connections[key][a]).emit('user-left', socket.id)
+                        for (let i = 0; i < connections[key].length; ++i) {
+                            io.to(connections[key][i]).emit('user-left', socket.id)
                         }
                         var index = connections[key].indexOf(socket.id)
                         connections[key].splice(index, 1)
 
-                        if(connections[key].length == 0){
+                        if (connections[key].length == 0) {
                             delete connections[key];
                         }
                     }
